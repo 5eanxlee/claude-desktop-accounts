@@ -1,0 +1,25 @@
+# claude-desktop-accounts
+
+> Free, open-source, unofficial macOS tools for using several Claude accounts in the Claude Desktop app. The session sync keeps every Claude Code session visible in the Code tab under every account (normally switching accounts hides the other account's sessions). The Claude Accounts menu bar app switches Claude Desktop between saved accounts in one click, without logging out, and shows each account's live 5-hour and weekly usage. Install with `npx claude-desktop-accounts`. MIT license. Not affiliated with Anthropic.
+
+Key facts:
+
+- Platform: macOS 13+, Claude Desktop. Needs Node.js 22+ (installer and session sync) and the Xcode command line tools (the menu bar app is compiled locally).
+- Install: `npx claude-desktop-accounts` or `curl -fsSL https://raw.githubusercontent.com/5eanxlee/claude-desktop-accounts/main/install.sh | bash`. Remove: `npx claude-desktop-accounts uninstall`.
+- Why sessions disappear: Claude Desktop stores the Code session list per account in `~/Library/Application Support/Claude/claude-code-sessions/<account>/<org>/`, while conversations are shared in `~/.claude/projects`. The sync copies each list entry into every account's folder.
+- Switching: the app saves each account's sign-in (config entries and claude.ai cookies, still encrypted), and on switch quits Claude, swaps the sign-in in, and reopens Claude. Use its Add Account action instead of Claude's Log Out, which ends the saved session.
+- Usage: read from claude.ai's organization usage endpoint with each account's own session cookie, decrypted in memory using the "Claude Safe Storage" Keychain key.
+- Safety: never modifies Claude.app; backups before the first sync; removals go to a trash folder; stops when Claude's undocumented data formats change.
+- Not supported: Windows, Linux, the `claude` CLI login, cloud sessions, Remote Control, Cowork.
+
+## Docs
+
+- [README](https://github.com/5eanxlee/claude-desktop-accounts/blob/main/README.md): install, FAQ, what it accesses
+- [How it works](https://github.com/5eanxlee/claude-desktop-accounts/blob/main/docs/how-it-works.md): files, sync rules, switching steps, usage request
+- [Session sync](https://github.com/5eanxlee/claude-desktop-accounts/blob/main/sync/README.md): commands and behaviour
+- [Claude Accounts app](https://github.com/5eanxlee/claude-desktop-accounts/blob/main/app/README.md): menu bar app details
+
+## Optional
+
+- [npm package](https://www.npmjs.com/package/claude-desktop-accounts)
+- [Changelog](https://github.com/5eanxlee/claude-desktop-accounts/blob/main/CHANGELOG.md)

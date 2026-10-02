@@ -1,0 +1,55 @@
+{
+  "name": "claude-desktop-accounts",
+  "version": "0.1.0",
+  "description": "Use several accounts in Claude Desktop on macOS: keep Code sessions visible under every account, and switch accounts in one click from the menu bar with live 5-hour and weekly usage. Unofficial.",
+  "type": "module",
+  "bin": {
+    "claude-desktop-accounts": "bin/cli.js"
+  },
+  "files": [
+    "bin/",
+    "lib/",
+    "sync/bin/",
+    "sync/src/",
+    "sync/package.json",
+    "app/*.swift",
+    "app/build.sh",
+    "llms.txt",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "os": [
+    "darwin"
+  ],
+  "scripts": {
+    "test": "node --test \"test/*.test.js\" \"sync/test/*.test.js\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/5eanxlee/claude-desktop-accounts.git"
+  },
+  "homepage": "https://github.com/5eanxlee/claude-desktop-accounts#readme",
+  "bugs": "https://github.com/5eanxlee/claude-desktop-accounts/issues",
+  "author": "Sean Lee",
+  "license": "MIT",
+  "keywords": [
+    "claude",
+    "claude-desktop",
+    "claude-code",
+    "anthropic",
+    "claude-ai",
+    "multiple-accounts",
+    "account-switcher",
+    "switch-accounts",
+    "session-sync",
+    "usage-limits",
+    "rate-limits",
+    "quota",
+    "menu-bar",
+    "menubar",
+    "macos",
+    "mac"
+  ]
+}

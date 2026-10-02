@@ -10,10 +10,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Session sync tests
-        working-directory: sync
+      - name: Installer and session sync tests
         run: npm test
       - name: App build and self-tests
         run: ./app/build.sh
-      - name: Installer syntax
-        run: bash -n install.sh && bash -n uninstall.sh
+      - name: Installer syntax and package contents
+        run: bash -n install.sh && npm pack --dry-run
