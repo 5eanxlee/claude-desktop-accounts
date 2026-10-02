@@ -1,0 +1,19 @@
+{
+  "name": "claude-session-sync",
+  "version": "0.1.0",
+  "description": "Keeps Claude Desktop Code-tab session records mirrored across every account folder on this Mac.",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "claude-session-sync": "bin/claude-session-sync.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "os": [
+    "darwin"
+  ],
+  "scripts": {
+    "test": "node --test \"test/*.test.js\""
+  }
+}
