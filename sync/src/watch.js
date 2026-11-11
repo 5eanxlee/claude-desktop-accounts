@@ -12,6 +12,13 @@ export function describePass(summary) {
     `${count(done, 'overwrite')} updated`,
     `${count(done, 'trash')} trashed`
   ]
+  const archived = done.filter((a) => a.archived !== undefined).length
+  if (archived) parts.push(`${archived} archive ${archived === 1 ? 'change' : 'changes'} carried over`)
+  const environments = summary.environments
+  if (environments?.written) parts.push(`SSH environments updated in ${environments.changes.length} ${environments.changes.length === 1 ? 'account' : 'accounts'}`)
+  if (environments?.skipped) parts.push('SSH environments skipped (changed during the pass)')
+  if (environments?.error) parts.push(`error ${environments.error} on SSH environments`)
+  if (environments?.backup) parts.push(`environments backup ${environments.backup} taken`)
   if (summary.deferred.length) parts.push(`${summary.deferred.length} deferred until the active folder is free`)
   const held = Object.values(summary.held).reduce((n, ids) => n + ids.length, 0)
   if (held) parts.push(`${held} held for review`)
@@ -38,7 +45,8 @@ export function startWatch({ paths, running, debounceMs = 500, intervalMs = 15_0
       return
     }
     // A standing situation (deferred work, a hold) is reported once, not every interval.
-    const changed = summary.results.done.length > 0 || summary.results.errors.length > 0
+    const environments = summary.environments ?? {}
+    const changed = summary.results.done.length > 0 || summary.results.errors.length > 0 || environments.written || environments.error
     const standing = JSON.stringify([summary.abort, summary.deferred, summary.held])
     const quiet = !changed && !summary.abort && summary.deferred.length === 0 && Object.keys(summary.held).length === 0
     if (changed || (!quiet && standing !== lastReport)) log(describePass(summary))

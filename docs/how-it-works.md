@@ -1,7 +1,7 @@
 # How it works
 
 Everything here is undocumented Claude Desktop behaviour, observed on macOS
-with Claude Desktop 2.16 (September 2026). Each tool checks that what it
+with Claude Desktop 2.16 (September 2026) and 5.1231 (November 2026). Each tool checks that what it
 reads still has the expected shape and stops when it does not.
 
 ## Where Claude Desktop keeps things
@@ -11,6 +11,8 @@ reads still has the expected shape and stops when it does not.
 | App data | `~/Library/Application Support/Claude/` |
 | Code session list, per account | `claude-code-sessions/<accountId>/<orgId>/local_<uuid>.json` |
 | Conversations (shared by all accounts) | `~/.claude/projects/…` |
+| Environments (session presets), per account | `ccd-session-presets.json`: `byAccount.<accountId>.presets` |
+| SSH machines (shared by all accounts) | `ssh_configs.json` |
 | Code-tab sign-in | `config.json`: `oauth:tokenCache`, `oauth:tokenCacheV2` (encrypted), `lastKnownAccountUuid` |
 | claude.ai sign-in | `Cookies` (Chromium SQLite), rows for `claude.ai` and `.claude.ai` (encrypted) |
 | Encryption key | login Keychain item "Claude Safe Storage" |
@@ -45,12 +47,33 @@ One pass:
    to the newest file) and is written to every other folder. Writes are
    staged in the tool's own folder and renamed into place, with the
    winner's modification time.
-4. A session that was in a folder last pass and is gone now was deleted in
+4. The archive flag (`isArchived`) is decided apart from the winner, because
+   archiving changes nothing else and Claude rewrites the open folder's
+   records with new file times. The tool remembers each folder's flag after
+   every pass; a folder whose flag differs from that is where the user
+   archived or unarchived, and its value is written into the winner's copy
+   for every folder (if two folders changed in opposite ways, the newer
+   file wins). Otherwise the remembered value stands. A session seen for
+   the first time is archived if any copy is.
+5. A session that was in a folder last pass and is gone now was deleted in
    Claude. Its other copies are moved to the tool's trash and it is not
    recreated. More than five at once, or a whole folder disappearing, is
    held for the user to resolve instead.
-5. Each folder's `archived-sessions.idx` (a load-order hint) is updated to
+6. Each folder's `archived-sessions.idx` (a load-order hint) is updated to
    match its records when it already exists.
+7. SSH environments are mirrored between the accounts listed in
+   `ccd-session-presets.json`. An SSH session record names its machine
+   (`sshConfig`) and the environment it was started from
+   (`startedFromEnvironmentId`); the machine list is already shared, but
+   environments are per account. An environment whose `target.kind` is
+   `ssh` is copied into every account's list; one that disappeared from a
+   list since the last pass was deleted there and is removed from the
+   others; one edited since the last pass wins over the other copies,
+   otherwise the most recently used copy does. Claude re-reads this file
+   whenever it changes and rewrites only its own account's entry, so it is
+   safe to update while Claude runs. The file is backed up once, written
+   with the same tab indentation, and left alone if Claude changed it
+   during the pass.
 
 The background agent runs a pass shortly after any change in the session
 folders and every 15 seconds.
@@ -84,6 +107,8 @@ over the Keychain password, salt `saltysalt`, 1003 rounds, AES-128-CBC with
 an IV of spaces; from cookie database version 24 the plaintext starts with
 the SHA-256 of the cookie's host) and calls
 `GET https://claude.ai/api/organizations/<orgId>/usage`. The response's
-`five_hour` and `seven_day` buckets give percent used and reset times. Only
+`five_hour` and `seven_day` buckets give percent used and reset times.
+Some plans have no five-hour limit; their `five_hour` bucket is null, and
+the menu shows the weekly limit alone. Only
 session cookies are sent, never Cloudflare or analytics cookies, and
 redirects are refused.

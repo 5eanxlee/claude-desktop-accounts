@@ -21,14 +21,18 @@ struct QuotaEntry {
     var version: Double = 0
 
     var stale: Bool { value != nil && (error != nil || checked.map { Date().timeIntervalSince($0) > 300 } == true) }
-    var label: String {
-        if let value { return value.label + (stale ? " · stale" : "") }
+    var label: String { text { $0.label } }
+    // With reset times, for the menu bar menu, where there is no line underneath for them.
+    var menuLabel: String { text { $0.menuLabel() } }
+
+    private func text(_ usage: (Usage) -> String) -> String {
+        if let value { return usage(value) + (stale ? " · stale" : "") }
         if loading { return "Checking…" }
         return error == QuotaFailure.signInAgain.errorDescription ? "Sign in again" : "Unavailable"
     }
     var details: String {
         var lines: [String] = []
-        if let value { lines.append("Used: \(value.label)."); lines.append(value.resetLabel + ".") }
+        if let value { lines.append("Used: \(value.label)."); lines.append(value.resetLabel() + ".") }
         if let checked { lines.append("Checked \(DateFormatter.localizedString(from: checked, dateStyle: .none, timeStyle: .medium)).") }
         if let error { lines.append(error) }
         if loading { lines.append("Refreshing…") }

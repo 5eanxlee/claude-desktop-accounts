@@ -55,9 +55,29 @@ func runTests() {
     check(usage.fiveHour?.used == 14 && usage.week?.used == 46, "Read five-hour and weekly utilization")
     check(usage.fiveHour?.resets == Date(timeIntervalSince1970: 1790798400), "Read a reset time with microseconds")
     check(usage.week?.resets == Date(timeIntervalSince1970: 1791028800), "Read a reset time without fractions")
-    check(usage.label == "5h 14% · week 46%", "Menu label")
+    check(usage.label == "5h 14% · week 46%", "Label with both limits")
     let empty = try! Usage(data: json(["five_hour": NSNull(), "seven_day": ["utilization": NSNull(), "resets_at": NSNull()]]))
-    check(empty.fiveHour == nil && empty.week == nil && empty.label == "5h – · week –", "Null buckets show as unknown")
+    check(empty.fiveHour == nil && empty.week == nil && empty.label == "No limits reported", "Null buckets are not shown as limits")
+
+    // Reset times, in a fixed place and language so the checks do not depend on this Mac's settings.
+    let us = Locale(identifier: "en_US"), utc = TimeZone(identifier: "UTC")!
+    let spaced = { (text: String) in text.replacingOccurrences(of: "\u{202F}", with: " ") }
+    let morning = Date(timeIntervalSince1970: 1790762400) // 2026-09-30 10:00 UTC, a Wednesday
+    check(spaced(Usage.when(Date(timeIntervalSince1970: 1790798400), now: morning, locale: us, timeZone: utc)) == "8:00 PM", "A reset later today shows the time only")
+    // The wording between date and time ("," or "at") varies with the macOS version.
+    let saturday = spaced(Usage.when(Date(timeIntervalSince1970: 1791028800), now: morning, locale: us, timeZone: utc))
+    check(saturday.hasPrefix("Sat, Oct 3") && saturday.hasSuffix("12:00 PM"), "A reset on another day shows the day and date")
+    check(spaced(usage.menuLabel(now: morning, locale: us, timeZone: utc)) == "5h 14%, resets 8:00 PM · week 46%, resets \(saturday)", "Menu row with both limits shows both reset times")
+    check(spaced(usage.resetLabel(now: morning, locale: us, timeZone: utc)) == "5-hour resets 8:00 PM · week resets \(saturday)", "Window line with both limits")
+    let weekly = try! Usage(data: json(["five_hour": NSNull(), "seven_day": ["utilization": 78, "resets_at": "2026-10-03T12:00:00Z"]]))
+    let noFiveHour = try! Usage(data: json(["seven_day": ["utilization": 78, "resets_at": "2026-10-03T12:00:00Z"]]))
+    check(weekly.weeklyOnly && noFiveHour == weekly, "A plan without a five-hour limit is weekly only, whether the bucket is null or absent")
+    check(weekly.label == "78%", "Weekly-only label has no 5h or week")
+    check(spaced(weekly.menuLabel(now: morning, locale: us, timeZone: utc)) == "78%, resets \(saturday)", "Weekly-only menu row shows its reset date")
+    check(spaced(weekly.resetLabel(now: morning, locale: us, timeZone: utc)) == "Resets \(saturday)", "Weekly-only window line")
+    for text in [weekly.label, weekly.menuLabel(), weekly.resetLabel()] { check(!text.contains("5h") && !text.contains("5-hour") && !text.contains("week"), "No five-hour or week wording: \(text)") }
+    let noDate = Usage(fiveHour: nil, week: .init(used: 40, resets: nil))
+    check(noDate.menuLabel() == "40%" && noDate.resetLabel() == "Resets unknown", "A missing reset time is left out of the row")
     var refused = false
     do { _ = try Usage(data: Data("[]".utf8)) } catch { refused = true }
     check(refused, "A response that is not an object is refused")
@@ -215,6 +235,7 @@ func runTests() {
     check(requests.count == 2, "Refresh once two minutes have passed")
     requests[1].1(.failure(AccountError(message: "Offline")))
     check(cache.entries[A]?.label == "5h 14% · week 46% · stale", "A failure keeps the last numbers, marked stale")
+    check(cache.entries[A]?.menuLabel.hasSuffix(" · stale") == true && cache.entries[A]?.menuLabel.contains("resets") == true, "The menu row is marked stale too, with its reset times")
     cache.refresh([aAccount], force: true)
     check(requests.count == 3, "Refresh Quotas skips the wait")
     requests[2].1(.failure(QuotaFailure.signInAgain))
@@ -228,6 +249,7 @@ func runTests() {
     cache.refresh([]); check(cache.entries.isEmpty, "Removed accounts are dropped")
     let noUsage = QuotaEntry()
     check(noUsage.label == "Unavailable" && QuotaEntry(loading: true).label == "Checking…", "Labels before any result")
+    check(noUsage.menuLabel == "Unavailable" && QuotaEntry(loading: true).menuLabel == "Checking…", "Menu labels before any result")
 
     // Sync tool
     let agent = dir.appendingPathComponent("agent.plist")

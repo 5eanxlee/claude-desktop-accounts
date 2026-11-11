@@ -1,7 +1,7 @@
 {
   "name": "claude-desktop-accounts",
-  "version": "0.1.0",
-  "description": "Use several accounts in Claude Desktop on macOS: keep Code sessions visible under every account, and switch accounts in one click from the menu bar with live 5-hour and weekly usage. Unofficial.",
+  "version": "0.2.0",
+  "description": "Use several accounts in Claude Desktop on macOS: keep Code sessions visible under every account, and switch accounts in one click from the menu bar with live usage and reset times. Unofficial.",
   "type": "module",
   "bin": {
     "claude-desktop-accounts": "bin/cli.js"

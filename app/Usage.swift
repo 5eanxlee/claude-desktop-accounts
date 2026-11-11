@@ -43,14 +43,51 @@ struct Usage: Equatable {
         return "\(Int(value.rounded()))%"
     }
 
+    // Some plans have only a weekly limit: claude.ai then sends no five-hour bucket, and the
+    // weekly one is shown on its own, without the "5h" and "week" names.
+    var weeklyOnly: Bool { fiveHour == nil && week != nil }
+
+    // Percent used, for places that show reset times separately.
     var label: String {
-        "5h \(fiveHour.map { Self.percent($0.used) } ?? "–") · week \(week.map { Self.percent($0.used) } ?? "–")"
+        switch (fiveHour, week) {
+        case (nil, nil): return "No limits reported"
+        case (nil, let week?): return Self.percent(week.used)
+        case (let fiveHour?, nil): return "5h \(Self.percent(fiveHour.used))"
+        case (let fiveHour?, let week?): return "5h \(Self.percent(fiveHour.used)) · week \(Self.percent(week.used))"
+        }
     }
 
-    var resetLabel: String {
-        func when(_ date: Date?) -> String {
-            date.map { DateFormatter.localizedString(from: $0, dateStyle: .short, timeStyle: .short) } ?? "unknown"
+    // Percent used with each reset time, for a menu row.
+    func menuLabel(now: Date = Date(), locale: Locale = .current, timeZone: TimeZone = .current) -> String {
+        func part(_ name: String?, _ bucket: Bucket) -> String {
+            let used = [name, Self.percent(bucket.used)].compactMap { $0 }.joined(separator: " ")
+            return bucket.resets.map { "\(used), resets \(Self.when($0, now: now, locale: locale, timeZone: timeZone))" } ?? used
         }
-        return "5-hour resets \(when(fiveHour?.resets)) · week resets \(when(week?.resets))"
+        switch (fiveHour, week) {
+        case (nil, nil): return label
+        case (nil, let week?): return part(nil, week)
+        case (let fiveHour?, nil): return part("5h", fiveHour)
+        case (let fiveHour?, let week?): return part("5h", fiveHour) + " · " + part("week", week)
+        }
+    }
+
+    // Reset times alone, for the line under an account in the window.
+    func resetLabel(now: Date = Date(), locale: Locale = .current, timeZone: TimeZone = .current) -> String {
+        func when(_ date: Date?) -> String { date.map { Self.when($0, now: now, locale: locale, timeZone: timeZone) } ?? "unknown" }
+        switch (fiveHour, week) {
+        case (nil, nil): return "claude.ai reported no usage limits"
+        case (nil, let week?): return "Resets \(when(week.resets))"
+        case (let fiveHour?, nil): return "5-hour resets \(when(fiveHour.resets))"
+        case (let fiveHour?, let week?): return "5-hour resets \(when(fiveHour.resets)) · week resets \(when(week.resets))"
+        }
+    }
+
+    // "6:30 PM" later today; "Fri, Nov 14, 10:00 AM" on another day.
+    static func when(_ date: Date, now: Date, locale: Locale, timeZone: TimeZone) -> String {
+        var calendar = Calendar(identifier: .gregorian); calendar.locale = locale; calendar.timeZone = timeZone
+        let formatter = DateFormatter(); formatter.locale = locale; formatter.timeZone = timeZone
+        let template = calendar.isDate(date, inSameDayAs: now) ? "jmm" : "EEEMMMdjmm"
+        formatter.dateFormat = DateFormatter.dateFormat(fromTemplate: template, options: 0, locale: locale)
+        return formatter.string(from: date)
     }
 }

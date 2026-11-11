@@ -21,6 +21,7 @@ export function makeEnv(t) {
   const stateDir = path.join(root, 'state')
   const paths = {
     sessionsRoot: path.join(root, 'claude-code-sessions'),
+    presetsFile: path.join(root, 'ccd-session-presets.json'),
     mainLog: path.join(root, 'logs', 'main.log'),
     stateDir,
     stateFile: path.join(stateDir, 'state.json'),

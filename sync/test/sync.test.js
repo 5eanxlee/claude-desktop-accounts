@@ -8,7 +8,7 @@ import { loadState, acquireLock } from '../src/state.js'
 import { scan } from '../src/scan.js'
 import {
   makeEnv, makeFolder, folderDir, writeRecord, readRecord, hasRecord, writeHint, readHint, writeLog, initLine, listAll, sid,
-  ACCT_A, ORG_A, KEY_A, KEY_B, KEY_C
+  ACCT_A, ORG_A, ACCT_B, ORG_B, KEY_A, KEY_B, KEY_C
 } from './helpers.js'
 
 const stopped = () => false
@@ -264,4 +264,64 @@ test('restore puts a backup back and clears remembered state', (t) => {
   assert.equal(readRecord(paths, KEY_A, sid(1)).title, 'original')
   assert.equal(fs.existsSync(paths.stateFile), false)
   assert.ok(listAll(paths.trashDir).some((f) => f.includes('restore-stamp') && f.endsWith(`${KEY_B}/${sid(1)}.json`)))
+})
+
+test('an archive in one account reaches the others even after Claude rewrites their copies', (t) => {
+  const { paths } = makeEnv(t)
+  writeRecord(paths, KEY_A, sid(1), {}, 1_700_000_000_000)
+  makeFolder(paths, KEY_B)
+  makeFolder(paths, KEY_C)
+  pass(paths)
+  // Archived under A; then Claude, open on B, writes B's copy from memory with a newer file time.
+  writeRecord(paths, KEY_A, sid(1), { isArchived: true }, 1_700_000_100_000)
+  writeRecord(paths, KEY_B, sid(1), {}, 1_700_000_200_000)
+  writeLog(paths, [initLine(ACCT_B, ORG_B)])
+  const during = pass(paths, { running: runningClaude })
+  assert.equal(readRecord(paths, KEY_A, sid(1)).isArchived, true, 'the archive is not undone where it happened')
+  assert.equal(readRecord(paths, KEY_C, sid(1)).isArchived, true)
+  assert.equal(readRecord(paths, KEY_B, sid(1)).isArchived, false, 'the open account is left to Claude')
+  assert.equal(during.deferred.length, 1)
+  // Claude touches B again while it stays open: still not mistaken for an unarchive.
+  writeRecord(paths, KEY_B, sid(1), {}, 1_700_000_300_000)
+  pass(paths, { running: runningClaude })
+  assert.equal(readRecord(paths, KEY_A, sid(1)).isArchived, true)
+  assert.equal(readRecord(paths, KEY_C, sid(1)).isArchived, true)
+  pass(paths)
+  for (const key of [KEY_A, KEY_B, KEY_C]) assert.equal(readRecord(paths, key, sid(1)).isArchived, true, key)
+  assert.deepEqual(pass(paths).actions, [])
+})
+
+test('an unarchive in one account reaches the others', (t) => {
+  const { paths } = makeEnv(t)
+  writeRecord(paths, KEY_A, sid(1), { isArchived: true }, 1_700_000_000_000)
+  makeFolder(paths, KEY_B)
+  pass(paths)
+  assert.equal(readRecord(paths, KEY_B, sid(1)).isArchived, true)
+  writeRecord(paths, KEY_B, sid(1), { isArchived: false }, 1_699_000_000_000)
+  pass(paths)
+  assert.equal(readRecord(paths, KEY_A, sid(1)).isArchived, false)
+  assert.equal(readRecord(paths, KEY_B, sid(1)).isArchived, false)
+})
+
+test('a changed archive flag keeps the rest of the record byte for byte', (t) => {
+  const { paths } = makeEnv(t)
+  writeRecord(paths, KEY_A, sid(1), { title: 'Ünïcode — title', nested: { isArchived: 'not this one' } }, 1_700_000_000_000)
+  makeFolder(paths, KEY_B)
+  pass(paths)
+  writeRecord(paths, KEY_A, sid(1), { title: 'Ünïcode — title', nested: { isArchived: 'not this one' }, isArchived: true }, 1_699_000_000_000)
+  writeRecord(paths, KEY_B, sid(1), { title: 'Ünïcode — title', nested: { isArchived: 'not this one' } }, 1_700_000_500_000)
+  pass(paths)
+  const a = fs.readFileSync(path.join(folderDir(paths, KEY_A), `${sid(1)}.json`), 'utf8')
+  const b = fs.readFileSync(path.join(folderDir(paths, KEY_B), `${sid(1)}.json`), 'utf8')
+  assert.equal(b, a)
+  assert.equal(JSON.parse(b).nested.isArchived, 'not this one')
+})
+
+test('an SSH session record is mirrored like any other', (t) => {
+  const { paths } = makeEnv(t)
+  const ssh = { cwd: '/home/ubuntu', sshConfig: { sshHost: 'workstation' }, startedFromEnvironmentId: 'env-1', envScopeId: 'env-1' }
+  writeRecord(paths, KEY_A, sid(1), ssh)
+  makeFolder(paths, KEY_B)
+  pass(paths)
+  assert.deepEqual(readRecord(paths, KEY_B, sid(1)).sshConfig, { sshHost: 'workstation' })
 })

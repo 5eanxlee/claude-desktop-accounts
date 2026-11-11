@@ -28,8 +28,10 @@ Needs the Xcode command line tools (`xcode-select --install`).
 2. Pick an account in the menu. Claude quits, reopens signed in to it, and
    the app waits for Claude to confirm. Running Code sessions stop; with the
    session sync installed they stay listed under every account.
-3. Usage shows as percent used for the 5-hour and weekly limits, refreshed
-   every two minutes. Hover a row for reset times.
+3. Usage shows as percent used for the 5-hour and weekly limits, with the
+   time each one resets, refreshed every two minutes. Accounts whose plan
+   has only a weekly limit show that alone, as `46%, resets Fri, Nov 14 at
+   10:00 AM`. Hover a row for when it was last checked.
 
 The first quota check asks for Keychain access to "Claude Safe Storage".
 Choose **Always Allow**. Rebuilding the app changes its signature, so macOS

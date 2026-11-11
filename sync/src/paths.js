@@ -8,6 +8,7 @@ export function defaultPaths({ home = os.homedir(), env = process.env } = {}) {
   const stateDir = path.join(support, 'claude-session-sync')
   return {
     sessionsRoot: path.join(support, 'Claude', 'claude-code-sessions'),
+    presetsFile: path.join(support, 'Claude', 'ccd-session-presets.json'),
     mainLog: path.join(base, 'Library', 'Logs', 'Claude', 'main.log'),
     stateDir,
     stateFile: path.join(stateDir, 'state.json'),

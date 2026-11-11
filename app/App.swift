@@ -92,8 +92,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
+    // The window shows reset times on a line under each account; the menu shows them in the row.
     func title(_ account: SavedAccount) -> String {
         account.label + " — " + (quotas.entries[account.accountId] ?? QuotaEntry()).label
+    }
+
+    func menuTitle(_ account: SavedAccount) -> String {
+        account.label + " — " + (quotas.entries[account.accountId] ?? QuotaEntry()).menuLabel
     }
 
     // MARK: menu
@@ -103,7 +108,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let info = NSMenuItem(title: state, action: nil, keyEquivalent: ""); info.isEnabled = false; menu.addItem(info)
         menu.addItem(.separator())
         for account in accounts {
-            let row = NSMenuItem(title: title(account), action: #selector(chooseMenu(_:)), keyEquivalent: "")
+            let row = NSMenuItem(title: menuTitle(account), action: #selector(chooseMenu(_:)), keyEquivalent: "")
             row.target = self; row.representedObject = account.accountId
             row.toolTip = quotas.entries[account.accountId]?.details
             row.state = isCurrent(account) ? .on : .off
@@ -143,7 +148,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // Update rows in place so a late answer cannot move a row the user is about to click.
         for row in item.menu?.items ?? [] {
             if let id = row.representedObject as? String, let account = accounts.first(where: { $0.accountId == id }) {
-                row.title = title(account); row.toolTip = quotas.entries[id]?.details
+                row.title = menuTitle(account); row.toolTip = quotas.entries[id]?.details
             } else if row.identifier?.rawValue == "quota-refresh" {
                 row.title = quotas.loading ? "Refreshing Quotas…" : "Refresh Quotas"; row.isEnabled = !quotas.loading
             }
@@ -188,7 +193,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             stack.addArrangedSubview(button)
             button.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
             button.heightAnchor.constraint(equalToConstant: 30).isActive = true
-            var detail = entry.error ?? entry.value?.resetLabel ?? (entry.loading ? "Checking claude.ai…" : "Not checked yet")
+            var detail = entry.error ?? entry.value?.resetLabel() ?? (entry.loading ? "Checking claude.ai…" : "Not checked yet")
             if let org = account.orgName { detail = "\(org) · \(detail)" }
             let line = label(detail); line.toolTip = entry.details
             stack.addArrangedSubview(line); stack.setCustomSpacing(1, after: button)

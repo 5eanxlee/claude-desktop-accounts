@@ -13,10 +13,12 @@ and a Team seat):
 
 - **Session sync** keeps every Claude Code session visible in the Code tab
   sidebar under every account. Without it, switching accounts makes the
-  other account's sessions disappear.
+  other account's sessions disappear. Archiving or unarchiving a session in
+  one account does the same in the others, and SSH environments (for
+  example a workstation) and their sessions are available in every account.
 - **Claude Accounts** is a menu bar app that switches Claude Desktop to
   another saved account in one click and shows each account's live usage
-  against its 5-hour and weekly limits.
+  against its limits, with when each one resets.
 
 It is unofficial and not affiliated with or endorsed by Anthropic.
 
@@ -83,10 +85,29 @@ working. **Add Account…** signs Claude out on your Mac only.
 
 ### Can I see the usage limits of all my Claude accounts at once?
 
-Yes. The menu shows each saved account as, for example,
-`you@example.com — 5h 14% · week 46%`, which is percent used of the 5-hour
-and weekly limits, with reset times on hover. It refreshes every two
-minutes, using the same usage endpoint Claude Desktop uses.
+Yes. The menu shows each saved account with percent used and when each
+limit resets, for example
+`you@example.com — 5h 14%, resets 6:30 PM · week 46%, resets Fri, Nov 14 at 10:00 AM`.
+Plans that have only a weekly limit show just that one, without the
+`5h` and `week` names: `you@example.com — 46%, resets Fri, Nov 14 at 10:00 AM`.
+It refreshes every two minutes, using the same usage endpoint Claude
+Desktop uses.
+
+### If I archive a session under one account, is it archived under the others?
+
+Yes, with the session sync installed. Archiving and unarchiving follow the
+session to every account, like its title and turns do. The account that is
+open in Claude picks up a change made elsewhere the next time it loads,
+which is after a switch.
+
+### Do sessions on an SSH machine show up under every account?
+
+Yes. SSH sessions are listed under every account like local ones, and the
+SSH environment they were started from (Claude's saved machine and folder,
+for example "PCB Workstation") is added to every account's environment
+list, so you can continue them or start new ones from any account.
+Deleting or renaming such an environment in one account does the same in
+the others. Local and cloud environments stay with their account.
 
 ### Is it safe? What does it access?
 
@@ -97,6 +118,7 @@ claude.ai.
 |---|---|---|
 | Claude.app itself | never changed | never changed (it only opens it and reads its version) |
 | Session list folders | copies list entries between account folders | — |
+| `ccd-session-presets.json` in Claude's data folder | copies SSH environments between accounts' lists | — |
 | `config.json` and `Cookies` in Claude's data folder | — | swaps the sign-in entries and claude.ai cookies, only while Claude is closed |
 | Keychain | — | reads "Claude Safe Storage" to decrypt session cookies in memory |
 | Network | none | `claude.ai` usage and account endpoints |
@@ -142,7 +164,7 @@ usage; claude-transplant does not switch accounts.
 
 See [docs/how-it-works.md](docs/how-it-works.md) for the files, the sync
 rules, the switching steps and the usage request, as observed in Claude
-Desktop 2.16.
+Desktop 2.16 and 5.1231.
 
 ## Development
 

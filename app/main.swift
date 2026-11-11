@@ -48,7 +48,7 @@ if arguments.contains("--quota") {
         client.usage(orgId: account.orgId, signIn: signIn) { result in
             var row: [String: Any] = ["account": String(account.accountId.prefix(8)), "email": account.email ?? NSNull()]
             switch result {
-            case .success(let usage): row["usage"] = usage.label; row["resets"] = usage.resetLabel
+            case .success(let usage): row["usage"] = usage.label; row["resets"] = usage.resetLabel(); row["menu"] = usage.menuLabel()
             case .failure(let error): row["error"] = error.localizedDescription
             }
             guard account.email == nil, case .success = result else { rows.append(row); pending -= 1; return }

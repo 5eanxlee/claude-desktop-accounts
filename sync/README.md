@@ -42,6 +42,18 @@ in the other accounts' lists when you switch.
 - **Newest activity wins.** For each session the copy with the latest
   `lastActivityAt` is written to the other folders; ties go to the newest
   file.
+- **Archiving follows the session.** Archiving does not change
+  `lastActivityAt`, and Claude rewrites the open account's records with new
+  file times, so the archive flag is decided separately: the folder whose
+  flag changed since the last pass is where you archived or unarchived, and
+  that flag is written everywhere. A folder that simply has not received
+  the change yet (the open account) is never mistaken for an unarchive.
+- **SSH environments are shared.** Claude keeps each account's
+  environments in `ccd-session-presets.json`. Environments on an SSH
+  machine are copied into every account's list; deleting or editing one
+  in an account does the same in the others. Local and cloud environments
+  are left alone, and an account gets a copy only once Claude has made a
+  list for it.
 - **The open account is add-only.** While Claude is running, the folder of
   the signed-in account only receives missing records. Updates and removals
   there wait until you switch away or quit, because Claude rewrites its
@@ -59,6 +71,7 @@ in the other accounts' lists when you switch.
 | What | Where |
 |---|---|
 | State, backups, trash | `~/Library/Application Support/claude-session-sync/` |
+| Environments backup | `backups/ccd-session-presets-<time>.json` there, before the first change |
 | Log | `~/Library/Logs/claude-session-sync.log` |
 | Agent | `~/Library/LaunchAgents/local.claude-session-sync.plist` |
 

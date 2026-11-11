@@ -1,12 +1,13 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { HINT_FILE } from './scan.js'
+import { withArchived } from './json.js'
 
 let counter = 0
 
 // Content is prepared in our own staging folder and renamed into place, so Claude's
 // folders only ever see a complete, ordinary file and never a temporary one.
-function stage(paths, bytes, mtimeMs) {
+export function stage(paths, bytes, mtimeMs) {
   fs.mkdirSync(paths.stagingDir, { recursive: true })
   const tmp = path.join(paths.stagingDir, `${process.pid}-${counter++}.tmp`)
   fs.writeFileSync(tmp, bytes, { mode: 0o600 })
@@ -56,7 +57,8 @@ function applyOne(action, byKey, paths, stamp) {
     const changed = unchangedSinceScan(target, folder.records.get(action.id))
     if (changed) return changed
   }
-  const tmp = stage(paths, winner.bytes, winner.mtimeMs)
+  const bytes = action.archived === undefined ? winner.bytes : withArchived(winner.bytes, action.archived)
+  const tmp = stage(paths, bytes, winner.mtimeMs)
   try {
     fs.renameSync(tmp, target)
   } catch (error) {

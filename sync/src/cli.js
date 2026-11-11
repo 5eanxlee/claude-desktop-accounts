@@ -39,7 +39,15 @@ function titleOf(summary, action) {
 function describeAction(summary, action, prefix = '') {
   if (action.type === 'hint') return `  ${'hint'.padEnd(9)} ${short(action.folder)}  archived list of ${action.ids.length}`
   const from = action.from ? `  from ${short(action.from)}` : ''
-  return `  ${(prefix + verb[action.type]).padEnd(9)} ${short(action.folder)}  ${titleOf(summary, action)} (${action.id.slice(0, 14)})${from}`
+  const flag = action.archived === undefined ? '' : action.archived ? ', archived' : ', unarchived'
+  return `  ${(prefix + verb[action.type]).padEnd(9)} ${short(action.folder)}  ${titleOf(summary, action)} (${action.id.slice(0, 14)}${flag})${from}`
+}
+
+function describeEnvironments(change) {
+  const parts = [['add', change.added], ['update', change.updated], ['remove', change.removed]]
+    .filter(([, names]) => names.length > 0)
+    .map(([what, names]) => `${what} ${names.join(', ')}`)
+  return `  ${'ssh env'.padEnd(9)} ${change.account.slice(0, 8)}  ${parts.join('; ')}`
 }
 
 function header(summary) {
@@ -53,7 +61,9 @@ function header(summary) {
 
 function planLine(summary) {
   const a = summary.actions
-  return `${count(a, 'create')} to create, ${count(a, 'overwrite')} to update, ${count(a, 'trash')} to trash; ${summary.deferred.length} deferred; ${heldCount(summary.held)} held`
+  const environments = summary.environments?.changes.length ?? 0
+  const accounts = environments > 0 ? `; SSH environments to update in ${environments} ${environments === 1 ? 'account' : 'accounts'}` : ''
+  return `${count(a, 'create')} to create, ${count(a, 'overwrite')} to update, ${count(a, 'trash')} to trash; ${summary.deferred.length} deferred; ${heldCount(summary.held)} held${accounts}`
 }
 
 function sync(flags, { paths, out, running }) {
@@ -78,12 +88,13 @@ function sync(flags, { paths, out, running }) {
     out('Dry run: nothing was written.')
     for (const action of summary.actions) out(describeAction(summary, action))
     for (const action of summary.deferred) out(describeAction(summary, action, 'later: '))
+    for (const change of summary.environments.changes) out(describeEnvironments(change))
     out(`Plan: ${planLine(summary)}.`)
   } else {
     out(`Done: ${describePass(summary)}.`)
   }
-  for (const note of summary.notes) out(`Note: ${note}.`)
-  return summary.results.errors.length > 0 ? 1 : 0
+  for (const note of [...summary.notes, ...summary.environments.notes]) out(`Note: ${note}.`)
+  return summary.results.errors.length > 0 || summary.environments.error ? 1 : 0
 }
 
 function status({ paths, out, running, agent }) {

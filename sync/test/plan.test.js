@@ -219,3 +219,100 @@ test('a hint drops a session that is being trashed', () => {
     { type: 'hint', folder: KEY_B, ids: [] }
   ])
 })
+
+// Archive memory as a pass leaves it: which ids each folder held and which it had archived.
+const remembered = (folders, consensus = []) => ({
+  known: Object.fromEntries(Object.keys(folders).map((key) => [key, [sid(1)]])),
+  archive: { consensus, folders }
+})
+
+test('an archive spreads even when another copy has a newer file and the same activity', () => {
+  const result = run(
+    [folder(KEY_A, [rec(sid(1), { isArchived: true }, 1000)]), folder(KEY_B, [rec(sid(1), {}, 9000)])],
+    { state: state(remembered({ [KEY_A]: [], [KEY_B]: [] })) }
+  )
+  assert.deepEqual(result.actions, [{ type: 'overwrite', folder: KEY_B, id: sid(1), from: KEY_B, archived: true }])
+  assert.deepEqual(result.archived, [sid(1)])
+})
+
+test('an unarchive spreads the same way', () => {
+  const result = run(
+    [folder(KEY_A, [rec(sid(1), {}, 1000)]), folder(KEY_B, [rec(sid(1), { isArchived: true }, 9000)])],
+    { state: state(remembered({ [KEY_A]: [sid(1)], [KEY_B]: [sid(1)] }, [sid(1)])) }
+  )
+  assert.deepEqual(result.actions, [{ type: 'overwrite', folder: KEY_B, id: sid(1), from: KEY_B, archived: false }])
+  assert.deepEqual(result.archived, [])
+})
+
+test('a folder that never received an archive is behind, not unarchiving', () => {
+  // B was the open account when A archived, so B still has the old flag, now with a newer file.
+  const result = run(
+    [folder(KEY_A, [rec(sid(1), { isArchived: true }, 1000)]), folder(KEY_B, [rec(sid(1), {}, 9000)])],
+    { state: state(remembered({ [KEY_A]: [sid(1)], [KEY_B]: [] }, [sid(1)])) }
+  )
+  assert.deepEqual(result.actions, [{ type: 'overwrite', folder: KEY_B, id: sid(1), from: KEY_B, archived: true }])
+  assert.deepEqual(result.archived, [sid(1)])
+})
+
+test('an archive for the open account waits until it is free', () => {
+  const result = run(
+    [folder(KEY_A, [rec(sid(1), { isArchived: true }, 1000)]), folder(KEY_B, [rec(sid(1), {}, 9000)])],
+    { state: state(remembered({ [KEY_A]: [], [KEY_B]: [] })), protectedKeys: new Set([KEY_B]) }
+  )
+  assert.deepEqual(result.actions, [])
+  assert.deepEqual(result.deferred, [{ type: 'overwrite', folder: KEY_B, id: sid(1), from: KEY_B, archived: true }])
+})
+
+test('newer content from another folder keeps the archive', () => {
+  const result = run(
+    [
+      folder(KEY_A, [rec(sid(1), { isArchived: true }, 1000)]),
+      folder(KEY_B, [rec(sid(1), { lastActivityAt: 2000, title: 'continued' }, 9000)]),
+      folder(KEY_C, [rec(sid(1), {}, 1000)])
+    ],
+    { state: state(remembered({ [KEY_A]: [], [KEY_B]: [], [KEY_C]: [] })) }
+  )
+  assert.deepEqual(result.actions, [
+    { type: 'overwrite', folder: KEY_A, id: sid(1), from: KEY_B, archived: true },
+    { type: 'overwrite', folder: KEY_B, id: sid(1), from: KEY_B, archived: true },
+    { type: 'overwrite', folder: KEY_C, id: sid(1), from: KEY_B, archived: true }
+  ])
+})
+
+test('opposite changes in two folders are settled by the newer file', () => {
+  const result = run(
+    [
+      folder(KEY_A, [rec(sid(1), { isArchived: true }, 3000)]),
+      folder(KEY_B, [rec(sid(1), {}, 2000)])
+    ],
+    { state: state(remembered({ [KEY_A]: [], [KEY_B]: [sid(1)] }, [])) }
+  )
+  assert.deepEqual(result.archived, [sid(1)])
+  assert.deepEqual(result.actions, [{ type: 'overwrite', folder: KEY_B, id: sid(1), from: KEY_A }])
+})
+
+test('without archive memory, an archive in any folder wins', () => {
+  const result = run([folder(KEY_A, [rec(sid(1), {}, 9000)]), folder(KEY_B, [rec(sid(1), { isArchived: true }, 1000)]), folder(KEY_C)])
+  assert.deepEqual(result.archived, [sid(1)])
+  assert.deepEqual(result.actions, [
+    { type: 'overwrite', folder: KEY_A, id: sid(1), from: KEY_A, archived: true },
+    { type: 'create', folder: KEY_C, id: sid(1), from: KEY_A, archived: true }
+  ])
+})
+
+test('a remembered archive stands when nothing changed it', () => {
+  const result = run([folder(KEY_A, [rec(sid(1), { isArchived: true })]), folder(KEY_B, [rec(sid(1), { isArchived: true })])], {
+    state: state(remembered({ [KEY_A]: [sid(1)], [KEY_B]: [sid(1)] }, [sid(1)]))
+  })
+  assert.deepEqual(result.actions, [])
+  assert.deepEqual(result.archived, [sid(1)])
+})
+
+test('a hint follows the archive decision, not the copied file', () => {
+  const hint = { exists: true, known: true, ids: [] }
+  const result = run(
+    [folder(KEY_A, [rec(sid(1), { isArchived: true }, 1000)]), folder(KEY_B, [rec(sid(1), {}, 9000)], { hint })],
+    { state: state(remembered({ [KEY_A]: [], [KEY_B]: [] })) }
+  )
+  assert.deepEqual(result.actions.filter((a) => a.type === 'hint'), [{ type: 'hint', folder: KEY_B, ids: [sid(1)] }])
+})

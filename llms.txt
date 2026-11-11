@@ -1,6 +1,6 @@
 # claude-desktop-accounts
 
-> Free, open-source, unofficial macOS tools for using several Claude accounts in the Claude Desktop app. The session sync keeps every Claude Code session visible in the Code tab under every account (normally switching accounts hides the other account's sessions). The Claude Accounts menu bar app switches Claude Desktop between saved accounts in one click, without logging out, and shows each account's live 5-hour and weekly usage. Install with `npx claude-desktop-accounts`. MIT license. Not affiliated with Anthropic.
+> Free, open-source, unofficial macOS tools for using several Claude accounts in the Claude Desktop app. The session sync keeps every Claude Code session visible in the Code tab under every account (normally switching accounts hides the other account's sessions), carries archiving across accounts, and shares SSH environments between accounts. The Claude Accounts menu bar app switches Claude Desktop between saved accounts in one click, without logging out, and shows each account's live usage and when each limit resets. Install with `npx claude-desktop-accounts`. MIT license. Not affiliated with Anthropic.
 
 Key facts:
 
